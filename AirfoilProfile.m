@@ -2,6 +2,7 @@
 
 % By: Timothy A. Coda
 % Date of Last Revision: 10 Sept 2017
+%Modified on September 19th
 
 % This script is used to generate text files of XYZ coordinates to be
 % imported into SolidWorks for the purpose of creating CAD models of
