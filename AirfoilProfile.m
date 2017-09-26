@@ -1,8 +1,8 @@
-%% Airfoil Paths and Profiles for SolidWorks
+function []=AirfoilProfile()
+% Airfoil Paths and Profiles for SolidWorks
 
 % By: Timothy A. Coda
 % Date of Last Revision: 10 Sept 2017
-%Modified on September 19th
 
 % This script is used to generate text files of XYZ coordinates to be
 % imported into SolidWorks for the purpose of creating CAD models of
@@ -35,193 +35,346 @@
 close all
 clear all
 clc
-%% ZigZag Airfoil (ZZ)
+
+f = figure('Visible','off','Position',[360,500,800,800]);
+ha = axes('Units','pixels','Position',[300,200,300,300]);
+
+bg = uibuttongroup('Visible','on',...
+    'Position',[0 0.3 .2 .5],...
+    'HandleVisibility','off',...
+    'SelectionChangedFcn',@selectionChange);
+
+% Create three radio buttons in the button group.
+radZZ = uicontrol(bg,'Style',...
+    'radiobutton',...
+    'String','Zig-Zag',...
+    'Position',[10 250 100 30],...
+    'HandleVisibility','off');
+
+radWoA = uicontrol(bg,'Style','radiobutton',...
+    'String','Witch of Agnesi',...
+    'Position',[10 150 100 30],...
+    'HandleVisibility','off');
+
+radSig = uicontrol(bg,'Style','radiobutton',...
+    'String','Sigmoid',...
+    'Position',[10 50 100 30],...
+    'HandleVisibility','off');
+
+radius = uicontrol('Style',...
+    'edit',...
+    'Position',[50 580 100 30],...
+    'Callback',@radiusCB,...
+    'HandleVisibility','off');
+
+span = uicontrol('Style',...
+    'edit',...
+    'Position',[200 580 100 30],...
+    'Callback',@spanCB,...
+    'HandleVisibility','off');
+
+sweep = uicontrol('Style',...
+    'edit',...
+    'Position',[350 580 100 30],...
+    'Callback',@sweepCB,...
+    'HandleVisibility','off');
+
+tuninga = uicontrol('Style',...
+    'edit',...
+    'Position',[500 580 100 30],...
+    'Callback',@tuning1CB,...
+    'HandleVisibility','off');
+
+tuningb = uicontrol('Style',...
+    'edit',...
+    'Position',[650 580 100 30],...
+    'Callback',@tuning2CB,...
+    'HandleVisibility','off');
+
+radiustxt = uicontrol('Style',...
+    'text',...
+    'String',...
+    'Radius',...
+    'Position',[50 610 100 20],...
+    'HandleVisibility','off');
+
+spantxt = uicontrol('Style',...
+    'text',...
+    'String',...
+    'Span',...
+    'Position',[200 610 100 20],...
+    'HandleVisibility','off');
+
+sweeptxt = uicontrol('Style',...
+    'text',...
+    'String',...
+    'Sweep Angle / pi',...
+    'Position',[350 610 100 20],...
+    'HandleVisibility','off');
+
+tuningtxta = uicontrol('Style',...
+    'text',...
+    'String',...
+    'Tuning WoA / pi',...
+    'Position',[500 610 100 20],...
+    'HandleVisibility','off');
+
+tuningtxtb = uicontrol('Style',...
+    'text',...
+    'String',...
+    'Tuning Sigmoid',...
+    'Position',[650 610 100 20],...
+    'HandleVisibility','off');
+
+
+export = uicontrol('Style',...
+    'pushbutton',...
+    'String',...
+    'Export Data',...
+    'Position',[30 150 100 30],...
+    'HandleVisibility','off');
+
+
+
+global XYZ1
+global XYZ2
+global choice
+global R;
+global SPAN;
+global SA;
+global a;
+global b;
 
 % First, specify the value of r of the chord line.  This is simply the
-% radius of the turbine, the radial distance from the center of the turbine 
+% radius of the turbine, the radial distance from the center of the turbine
 % at which the airfoil is mounted.  For the 1x turbine, R = 8.25 cm.
-R = 8.25; % recall all units are cm
+
+R = 8.25;
 
 % Now, specify the blade span, which will be in the z-direction.
 % Historically, the span of the blade is 22 cm:
 SPAN = 22;
 
-% It is necessary to divide the blade, and chord line, into discrete segments.
-% SolidWorks has a difficult time extruding along a complex paths.
-% Instead, discretize the blade based upon its features.  The ZigZag blade
-% lends itself to being treated as two portions that are symmetric about
-% the mid-chord point.  In general, try to define paths that are
-% monotonically increasing or decreasing in nature.
-% Furthermore, as will be seen below, this discretization is necessary so
-% that the blade curvature is modeled in SolidWorks as desired.
-n = 100; % number or discrete points comprising the chord path
-Z1_ZZ = linspace(0,SPAN/2,n)';
-Z2_ZZ = linspace(SPAN/2,SPAN,n)';
-
-% Now define the corresponding theta value for each segment.  For the ZigZag
-% blade with a sweep angle (SA) of 45 degrees, the theta variation is simply
-% linear:
-SA_ZZ = pi/4; % in radians
-theta1_ZZ = linspace(0,SA_ZZ,n)';
-theta2_ZZ = linspace(SA_ZZ,0,n)';
-
-% Finally, define the radial values of the chord line.  We are not
-% considering a bulbous or canted blade, so r is constant:
-r1_ZZ = R*ones(1,n)';
-r2_ZZ = R*ones(1,n)';
-
-% Now we can use the pol2cart function.  Note that all of the arrays above
-% are column arrays; this is the required format for the pol2cart function.
-% The function returns three separate column arrays of the x, y, and z
-% values.  These arrays are joined into a single matrix and then exported
-% as a text file, which can be read by SolidWorks
-
-% Additionally, it is also best to shift the curve such that it begins at
-% the origin (this will make it more compatible with the airfoil curves 
-% generated below).  All that needs to be done is subtraction of the value 
-% of R from the x-values of the curves:
-[x1_ZZ,y1_ZZ,z1_ZZ] = pol2cart(theta1_ZZ,r1_ZZ,Z1_ZZ);
-x1_ZZ = x1_ZZ - R;
-XYZ1_ZZ = [x1_ZZ,y1_ZZ,z1_ZZ];
-[x2_ZZ,y2_ZZ,z2_ZZ] = pol2cart(theta2_ZZ,r2_ZZ,Z2_ZZ);
-x2_ZZ = x2_ZZ - R;
-XYZ2_ZZ = [x2_ZZ,y2_ZZ,z2_ZZ];
-
-%% Witch of Agnesi (WoA)
-
-% Note that this is not exactly the chord line guide curves used in the WoA
-% blades made in Spring 2017; those blades consisted for 4 segments, 2 of
-% which were straight.  Below only two segments are considered, thus this is very
-% similar to the ZigZag blade above.  The z and r components of the guide
-% curves will be the same as those above; only the theta component changes.
-
-% The WoA function:
-
-% f(z) = (8*a^3)/(z^2 + 4*a^2)
-
-% The nature of the WoA equation requires shifting and scaling to achieve
-% the desired profile with the desired sweep angle.  The variable "a" is
-% a tuning parameter of sorts, and determines the "sharpness" of the WoA
-% curve.  Furthermore, the WoA curve is
-% symmetric about z = 0.  However, the other curves and profiles generated
-% in this code are based in the z = [0,SPAN] range, not the 
-% z = [-SPAN/2,SPAN/2] range.  Thus, when using the WoA equation,
-% the independent variable (z) must be shifted to get the desired theta
-% variation.
-Z1_WoA = Z1_ZZ; Z2_WoA = Z2_ZZ; r1_WoA = r1_ZZ; r2_WoA = r2_ZZ;
-SA_WoA = pi/4;
-a = pi/4; % a "tuning parameter"
-% WoA function
-theta1_WoA = (8*a^3)./(((Z1_WoA-(0.5*SPAN)).^2 + 4*a^2));
-% First shift:
-theta1_WoA = theta1_WoA - min(theta1_WoA);
-% Then scale:
-beta = SA_WoA/max(theta1_WoA);
-theta1_WoA = beta.*theta1_WoA;
-% WoA function
-theta2_WoA = (8*a^3)./(((Z2_WoA-(0.5*SPAN)).^2 + 4*a^2)); 
-% First shift:
-theta2_WoA = theta2_WoA - min(theta2_WoA);
-% Then scale:
-theta2_WoA = beta.*theta2_WoA;
-[x1_WoA,y1_WoA,z1_WoA] = pol2cart(theta1_WoA,r1_WoA,Z1_WoA);
-x1_WoA = x1_WoA - R;
-XYZ1_WoA = [x1_WoA,y1_WoA,z1_WoA];
-[x2_WoA,y2_WoA,z2_WoA] = pol2cart(theta2_WoA,r2_WoA,Z2_WoA);
-x2_WoA = x2_WoA - R;
-XYZ2_WoA = [x2_WoA,y2_WoA,z2_WoA];
-
-%% Sigmoid Path
-
-% The Sigmoid blade is the most complex; it is discretized into 5 different
-% segments.  However, three of those segments are simple, straight lines.
-% Thus, it is not fully necessary to define and export those segments, as
-% the Loft tool will not be necessary.  Instead, a simple linear extrusion
-% can be done.
-
-% The Sigmoid function:
-
-% f(z) = 1/(1 + exp(-b*z))
-
-% Like the WoA curve, the Sigmoid curve will require shifting and scaling to achieve the
-% desired profile.  And, like the WoA function, the Sigmoid function is
-% centered about z = 0.  So, the dependent variable (z) will have to be
-% shifted.  "b" represents a tuning parameter and controls the "steepness"
-% of the Sigmoid curve.
-
-% Finally, the curves created below were not actually used to create the
-% "Sigmoid" blade created in Spring 2017.  In fact, the Sigmoid function
-% was not even used.  The theta variation was simply linear.  However, the
-% code below produces a theta variation using the Sigmoid function.
-
-% The blade has three straight segments, all with a length of 31/6 cm, and
-% two Sigmoid segments, both with a length of 3.25 cm (summing of the five
-% lengths gives our SPAN value of 22 cm)
-
-SA_sig = pi/4;
+SA = pi/4;
+a = pi/4;
 b = 1.5;
-delz1 = 31/6; delz2 = 3.25;
-Z1_sig = linspace(0,delz1,n)';
-Z2_sig = linspace(delz1,delz1+delz2,n)';
-Z3_sig = linspace(delz1+delz2,delz1+delz2+delz1,n)';
-Z4_sig = linspace(delz1+delz2+delz1,delz1+delz2+delz1+delz2,n)';
-Z5_sig = linspace(delz1+delz2+delz1+delz2,delz1+delz2+delz1+delz2+delz1,n)';
-r1_sig = R*ones(length(Z1_sig),1);
-r2_sig = R*ones(length(Z2_sig),1);
-r3_sig = R*ones(length(Z3_sig),1);
-r4_sig = R*ones(length(Z4_sig),1);
-r5_sig = R*ones(length(Z5_sig),1);
+choice = 'Zig-Zag';
 
-% Sigmoid Function
-theta2_sig = SA_sig.*(1./(1+exp(-b*(Z2_sig - delz1 - 0.5*delz2))));
-% First shift:
-theta2_sig = theta2_sig - min(theta2_sig);
-% Then scale:
-gamma = SA_sig/max(theta2_sig);
-theta2_sig = gamma*theta2_sig;
-% The theta variation for the other Sigmoid segment can be easily derived
-% from theta_sig2 by reversing the order of the entries of the array,
-% essentially mirroring the variation:
-theta4_sig = flipud(theta2_sig);
+refresh(choice);
 
-% theta is constant for the other three segments (theta = 0 for the first
-% and fifth segments, and theta = pi/4 for the third segment)
-theta1_sig = zeros(length(Z1_sig),1);
-theta3_sig = (pi/4)*ones(length(Z3_sig),1);
-theta5_sig = zeros(length(Z5_sig),1);
 
-% Given the simplicity of the straight segments, we will not bother
-% converting them into Cartesian coordinates, nor will we write them to text
-% files.  We will, however, use them for plotting to check our work.
+% Initialize the UI.
+% Change units to normalized so components resize automatically.
+f.Units = 'normalized';
 
-[x2_sig,y2_sig,z2_sig] = pol2cart(theta2_sig,r2_sig,Z2_sig);
-x2_sig = x2_sig - R;
-XYZ2_sig = [x2_sig,y2_sig,z2_sig];
-[x4_sig,y4_sig,z4_sig] = pol2cart(theta4_sig,r4_sig,Z4_sig);
-x4_sig = x4_sig - R;
-XYZ4_sig = [x4_sig,y4_sig,z4_sig];
 
-%% Plot Guide Curve
+% Move the window to the center of the screen.
+movegui(f,'center')
 
-% For more complex paths it may be better to first check here that the path
-% is defined correctly.  Thic can be done by plotting theta versus z on a
-% Cartesian plane:
-figure(1)
-grid on
-box on
-hold on
-axis([0 SPAN 0 SA_sig])
-plot(Z1_sig,theta1_sig,'b-','LineWidth',2)
-plot(Z2_sig,theta2_sig,'r-','LineWidth',2)
-plot(Z3_sig,theta3_sig,'g-','LineWidth',2)
-plot(Z4_sig,theta4_sig,'c-','LineWidth',2)
-plot(Z5_sig,theta5_sig,'m-','LineWidth',2)
-legend('Segment 1','Segment 2','Segment 3','Segment 4','Segment 5','location','best')
-xlabel('Z (cm)')
-ylabel('\theta (rad)')
-set(gca,'FontSize',24)
-hold off
-%% Airfoil Profile
+% Make the window visible.
+f.Visible = 'on';
+
+    function [] = refresh(new)
+        if strcmp(new,'Zig-Zag')
+            % It is necessary to divide the blade, and chord line, into discrete segments.
+            % SolidWorks has a difficult time extruding along a complex paths.
+            % Instead, discretize the blade based upon its features.  The ZigZag blade
+            % lends itself to being treated as two portions that are symmetric about
+            % the mid-chord point.  In general, try to define paths that are
+            % monotonically increasing or decreasing in nature.
+            % Furthermore, as will be seen below, this discretization is necessary so
+            % that the blade curvature is modeled in SolidWorks as desired.
+            n = 100; % number or discrete points comprising the chord path
+            Z1_ZZ = linspace(0,SPAN/2,n)';
+            Z2_ZZ = linspace(SPAN/2,SPAN,n)';
+            
+            % Now define the corresponding theta value for each segment.  For the ZigZag
+            % blade with a sweep angle (SA) of 45 degrees, the theta variation is simply
+            % linear:
+            
+            theta1_ZZ = linspace(0,SA,n)';
+            theta2_ZZ = linspace(SA,0,n)';
+            
+            % Finally, define the radial values of the chord line.  We are not
+            % considering a bulbous or canted blade, so r is constant:
+            r1_ZZ = R*ones(1,n)';
+            r2_ZZ = R*ones(1,n)';
+            
+            % Now we can use the pol2cart function.  Note that all of the arrays above
+            % are column arrays; this is the required format for the pol2cart function.
+            % The function returns three separate column arrays of the x, y, and z
+            % values.  These arrays are joined into a single matrix and then exported
+            % as a text file, which can be read by SolidWorks
+            
+            % Additionally, it is also best to shift the curve such that it begins at
+            % the origin (this will make it more compatible with the airfoil curves
+            % generated below).  All that needs to be done is subtraction of the value
+            % of R from the x-values of the curves:
+            [x1_ZZ,y1_ZZ,z1_ZZ] = pol2cart(theta1_ZZ,r1_ZZ,Z1_ZZ);
+            x1_ZZ = x1_ZZ - R;
+            XYZ1 = [x1_ZZ,y1_ZZ,z1_ZZ];
+            [x2_ZZ,y2_ZZ,z2_ZZ] = pol2cart(theta2_ZZ,r2_ZZ,Z2_ZZ);
+            x2_ZZ = x2_ZZ - R;
+            XYZ2 = [x2_ZZ,y2_ZZ,z2_ZZ];
+            
+        elseif strcmp(new,'Witch of Agnesi')
+            % Note that this is not exactly the chord line guide curves used in the WoA
+            % blades made in Spring 2017; those blades consisted for 4 segments, 2 of
+            % which were straight.  Below only two segments are considered, thus this is very
+            % similar to the ZigZag blade above.  The z and r components of the guide
+            % curves will be the same as those above; only the theta component changes.
+            
+            % The WoA function:
+            
+            % f(z) = (8*a^3)/(z^2 + 4*a^2)
+            
+            % The nature of the WoA equation requires shifting and scaling to achieve
+            % the desired profile with the desired sweep angle.  The variable "a" is
+            % a tuning parameter of sorts, and determines the "sharpness" of the WoA
+            % curve.  Furthermore, the WoA curve is
+            % symmetric about z = 0.  However, the other curves and profiles generated
+            % in this code are based in the z = [0,SPAN] range, not the
+            % z = [-SPAN/2,SPAN/2] range.  Thus, when using the WoA equation,
+            % the independent variable (z) must be shifted to get the desired theta
+            % variation.
+            n = 100;
+            Z1_WoA = linspace(0,SPAN/2,n)'; 
+            Z2_WoA = linspace(SPAN/2,SPAN,n)';
+            r1_WoA = R*ones(1,n)';
+            r2_WoA = R*ones(1,n)';
+            % WoA function
+            theta1_WoA = (8*a^3)./(((Z1_WoA-(0.5*SPAN)).^2 + 4*a^2));
+            % First shift:
+            theta1_WoA = theta1_WoA - min(theta1_WoA);
+            % Then scale:
+            beta = SA/max(theta1_WoA);
+            theta1_WoA = beta.*theta1_WoA;
+            % WoA function
+            theta2_WoA = (8*a^3)./(((Z2_WoA-(0.5*SPAN)).^2 + 4*a^2));
+            % First shift:
+            theta2_WoA = theta2_WoA - min(theta2_WoA);
+            % Then scale:
+            theta2_WoA = beta.*theta2_WoA;
+            [x1_WoA,y1_WoA,z1_WoA] = pol2cart(theta1_WoA,r1_WoA,Z1_WoA);
+            x1_WoA = x1_WoA - R;
+            XYZ1 = [x1_WoA,y1_WoA,z1_WoA];
+            [x2_WoA,y2_WoA,z2_WoA] = pol2cart(theta2_WoA,r2_WoA,Z2_WoA);
+            x2_WoA = x2_WoA - R;
+            XYZ2 = [x2_WoA,y2_WoA,z2_WoA];
+            
+        else
+            % The Sigmoid blade is the most complex; it is discretized into 5 different
+            % segments.  However, three of those segments are simple, straight lines.
+            % Thus, it is not fully necessary to define and export those segments, as
+            % the Loft tool will not be necessary.  Instead, a simple linear extrusion
+            % can be done.
+            
+            % The Sigmoid function:
+            
+            % f(z) = 1/(1 + exp(-b*z))
+            
+            % Like the WoA curve, the Sigmoid curve will require shifting and scaling to achieve the
+            % desired profile.  And, like the WoA function, the Sigmoid function is
+            % centered about z = 0.  So, the dependent variable (z) will have to be
+            % shifted.  "b" represents a tuning parameter and controls the "steepness"
+            % of the Sigmoid curve.
+            
+            % Finally, the curves created below were not actually used to create the
+            % "Sigmoid" blade created in Spring 2017.  In fact, the Sigmoid function
+            % was not even used.  The theta variation was simply linear.  However, the
+            % code below produces a theta variation using the Sigmoid function.
+            
+            % The blade has three straight segments, all with a length of 31/6 cm, and
+            % two Sigmoid segments, both with a length of 3.25 cm (summing of the five
+            % lengths gives our SPAN value of 22 cm)
+            n = 100;
+            delz1 = 31/6; delz2 = 3.25;
+            Z1_sig = linspace(0,delz1,n)';
+            Z2_sig = linspace(delz1,delz1+delz2,n)';
+            Z3_sig = linspace(delz1+delz2,delz1+delz2+delz1,n)';
+            Z4_sig = linspace(delz1+delz2+delz1,delz1+delz2+delz1+delz2,n)';
+            Z5_sig = linspace(delz1+delz2+delz1+delz2,delz1+delz2+delz1+delz2+delz1,n)';
+            r1_sig = R*ones(length(Z1_sig),1);
+            r2_sig = R*ones(length(Z2_sig),1);
+            r3_sig = R*ones(length(Z3_sig),1);
+            r4_sig = R*ones(length(Z4_sig),1);
+            r5_sig = R*ones(length(Z5_sig),1);
+            
+            % Sigmoid Function
+            theta2_sig = SA.*(1./(1+exp(-b*(Z2_sig - delz1 - 0.5*delz2))));
+            % First shift:
+            theta2_sig = theta2_sig - min(theta2_sig);
+            % Then scale:
+            gamma = SA/max(theta2_sig);
+            theta2_sig = gamma*theta2_sig;
+            % The theta variation for the other Sigmoid segment can be easily derived
+            % from theta_sig2 by reversing the order of the entries of the array,
+            % essentially mirroring the variation:
+            theta4_sig = flipud(theta2_sig);
+            
+            % theta is constant for the other three segments (theta = 0 for the first
+            % and fifth segments, and theta = pi/4 for the third segment)
+            theta1_sig = zeros(length(Z1_sig),1);
+            theta3_sig = (pi/4)*ones(length(Z3_sig),1);
+            theta5_sig = zeros(length(Z5_sig),1);
+            
+            % Given the simplicity of the straight segments, we will not bother
+            % converting them into Cartesian coordinates, nor will we write them to text
+            % files.  We will, however, use them for plotting to check our work.
+            
+            [x2_sig,y2_sig,z2_sig] = pol2cart(theta2_sig,r2_sig,Z2_sig);
+            x2_sig = x2_sig - R;
+            XYZ1 = [x2_sig,y2_sig,z2_sig];
+            [x4_sig,y4_sig,z4_sig] = pol2cart(theta4_sig,r4_sig,Z4_sig);
+            x4_sig = x4_sig - R;
+            XYZ2 = [x4_sig,y4_sig,z4_sig];
+        end
+        
+        clf;
+        ha = axes('Units','pixels','Position',[300,200,300,300]);
+        hold all;
+        plot3(XYZ1(:,1),XYZ1(:,2),XYZ1(:,3));
+        plot3(XYZ2(:,1),XYZ2(:,2),XYZ2(:,3));
+        view(3);
+    end
+
+    function [] = selectionChange(source,event)
+        choice = event.NewValue.String;
+        refresh(choice); 
+    end
+    
+    function [] = radiusCB(hObject, eventdata, handles)
+        input = get(hObject,'String');
+        R = str2double(input);
+        refresh(choice);
+    end
+    function [] = spanCB(hObject, eventdata, handles)
+        input = get(hObject,'String');
+        SPAN = str2double(input);
+        refresh(choice);
+    end
+    function [] = sweepCB(hObject, eventdata, handles)
+        input = get(hObject,'String');
+        SA = str2double(input);
+        refresh(choice);
+    end
+    function [] = tuning1(hObject, eventdata, handles)
+        input = get(hObject,'String');
+        a = str2double(input);
+        refresh(choice);
+    end
+    function [] = tuning2CB(hObject, eventdata, handles)
+        input = get(hObject,'String');
+        b = str2double(input);
+        refresh(choice);
+    end
+
+
+
+
+
+%{
+% Airfoil Profile
 
 % Define the chord length (in cm)
 c = 6; % chord length
@@ -252,7 +405,7 @@ XYZ_air = XYZ_air';
 
 % Now, we must generate additional airfoil profiles to be located at the end of
 % our lofted paths.  This requires translation and/or rotation of the
-% "reference" airfoil profile made above.  The rotational component is derived from the sweep 
+% "reference" airfoil profile made above.  The rotational component is derived from the sweep
 % angle; the translational component is derived from the sweep angle and
 % the span of the chord line path
 
@@ -315,3 +468,5 @@ dlmwrite('WoAPath1.txt',XYZ1_WoA);
 dlmwrite('WoAPath2.txt',XYZ2_WoA);
 dlmwrite('SigmoidPath2.txt',XYZ2_sig);
 dlmwrite('SigmoidPath4.txt',XYZ4_sig);
+%}
+end
